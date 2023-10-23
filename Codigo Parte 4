@@ -1,0 +1,512 @@
+//ARDUINO NUMERO 1////////////////////////////////////////////////////////////////////////////////////
+// C++ code
+// Bautista Santos Tapia
+/*https://github.com/BautistaSantosTapia/Parcial-domiciliario
+-Sistemas-de-Procesamiento-de-Datos*/
+
+//definimos que puerto es cada segmento
+#define A 13
+#define B 12
+#define C 11
+#define D 10
+#define E 9
+#define F 8
+#define G 7
+
+//definimos que puerto es cada pulsador
+#define pulsadorMenor 3
+#define pulsadorMayor 2
+
+//definimos que puerto es el switch
+#define sw_1 4
+
+//definimos que puerto analogico es cada display de 7 segmentos
+#define UNIDAD A5
+#define DECENA A4
+
+//definimos APAGADO como 0
+#define APAGADO 0
+/*definimos la variable TIEMPO_APAGADO como 10 que es el tiempo 
+en el cual va a estar apagado un display y prendido el otro*/
+#define TIEMPO_APAGADO 10
+
+//definimos que puerto analogico es el sensor de flexion
+#define sensor A0
+
+//definimos la variable countDigito y countDigitoPrimo como 0
+int countDigito = 0;
+int countDigitoPrimo = 0;
+
+//definimos la variable mayor y mayorAnterior como 1
+int mayor = 1;
+int mayorAnterior=1;
+
+//definimos la variable menor y menorAnterior como 1
+int menor = 1;
+int menorAnterior=1;
+
+/*Estas variables despues nos van a servir para identificar si 
+los botones fueron presionados y si se dejaron de presionar */
+
+/*definimos la variable tiempoPrimo como 1 segundo que va a ser 
+el intrevalo de tiempo en el que cambia el contador primo*/
+int tiempoPrimo = 1000;
+
+//definimos variables que nos van a servir para el sensor
+int lectura;
+int flexion;
+#define led_1 A3
+#define led_2 A2
+#define led_3 A1
+
+//definimos el puerto del motor
+#define motor 6
+
+
+
+/*Aca inicializamos y definimos algunas de las cosas que vamos 
+a usar*/
+void setup()
+{
+  pinMode(A, OUTPUT);
+  pinMode(B, OUTPUT);
+  pinMode(C, OUTPUT);
+  pinMode(D, OUTPUT);
+  pinMode(E, OUTPUT);
+  pinMode(F, OUTPUT);
+  pinMode(G, OUTPUT);
+  
+  /*INPUT_PULLUP hace que no necesite resistencia y nos dice 
+  que esta presionado cuando el valor sea 0*/
+  pinMode(pulsadorMenor, INPUT_PULLUP);
+  pinMode(pulsadorMayor, INPUT_PULLUP);
+  
+  pinMode(UNIDAD, OUTPUT);
+  pinMode(DECENA, OUTPUT);
+  pinMode(sensor, INPUT);
+  pinMode(led_1, OUTPUT);
+  pinMode(led_2, OUTPUT);
+  pinMode(led_3, OUTPUT);
+  pinMode(motor,OUTPUT);
+  
+  digitalWrite(UNIDAD, 0);
+  digitalWrite(DECENA, 0);
+  
+  printDigito(0);
+  
+  
+}
+
+
+/*Esta es una funcion que esta en un bucle. Lo que va a hacer 
+esta funcion es que si el switch es igual a 1, va a llamar a la 
+funcion flexionar() para poder medir el nivel de flexion del 
+sensor de flexion. Tambien va a llamar a la funcion 
+keyPressed() para identificar si pulsamos alguno de los 
+pulsadores. Despues, si se pulso se va a fijar cual es el 
+pulsador y segun el que sea va a sumar o restar el numero que 
+se esta mostrando en los displays. Si el numero es mayor a 99 
+se pone en 0 y si es menor a 0 se pone en 99.
+Y en caso de que el switch sea igual a 0, mediante el uso de 2 
+whiles vamos a determinar que numeros, en el rango de 0 a 99, 
+son primos y los vamos a ir mostrando en los displays hasta que 
+cambie el switch de posicion.(En esta posicion del switch no se 
+mide el nivel de flexion del sensor)*/
+void loop()
+{
+
+  if (digitalRead(sw_1) == 1){
+    
+    flexionar();
+    
+    //le decimos al motor que se apague
+    digitalWrite(motor, LOW);
+    
+    int presionado = keyPressed();
+
+    if (presionado == pulsadorMayor)
+    {
+      countDigito++;
+      if (countDigito > 99)
+      {
+        countDigito = 0;
+      }
+    }
+    else if (presionado == pulsadorMenor)
+    {
+      countDigito--;
+      if (countDigito < 0)
+      {
+        countDigito = 99;
+      }
+    }
+
+    printCount(countDigito);
+  }
+  
+  else if(digitalRead(sw_1) == 0){
+    //le decimos al motor que se prenda
+    digitalWrite(motor, HIGH);
+    
+    //definimos variables que nos van a ser utiles
+    int i;
+   	int j;
+    int primo;
+    
+	// i pasa a valer 1
+    i=1; 
+
+    /*Aca decimos que mientras i sea menor a 100 y el switch 
+    siga siendo 0 vamos a ingresar al while*/
+    while(i<100 && digitalRead(sw_1) == 0){
+      	// j pasa a valer 1 y primo 0
+     	j=1;
+      	primo=0;
+      
+      	/*Mientras j sea menor o igual a i y el switch siga 
+        siendo 0 vamos a ingresar al ete otro while*/
+     	while(j<=i && digitalRead(sw_1) == 0){
+          
+          	/*Si i modulo de j es cero(el resto). Entonces, se 
+            suma 1 a la variable primo*/
+      		if(i%j==0){
+       			primo=primo+1;
+      		}
+          
+          	/*Incrementa j de 1 en 1*/
+      		j=j+1;
+     	}
+      
+      /*Si primo es igual a 2, osea que, el número tiene dos 
+      divisiones exactas, se confirma que el numero es primo y 
+      se muestra en el display*/
+      if(primo==2){
+        printCount(i);
+        delay(500);//1000
+      }
+
+       i=i+1;/*Incremento de i de 1 en 1*/
+    }
+  }
+}
+
+
+/*Mientras el switch este en la posicion 1, esta funcion nos va 
+a mostrar, mediante luces, el nivel de flexion que esta teniendo
+el flexor*/
+void flexionar(){
+  //lee el dato del sensor
+  lectura=analogRead(sensor);
+  //lo mapea a numeros del 0 al 180
+  flexion = map(lectura,236,634,0,180);
+  //muestra el estado segun el nivel de flexion
+  if (flexion < 60){
+  	digitalWrite(led_1,HIGH);
+  	digitalWrite(led_2,LOW);
+  	digitalWrite(led_3,LOW);
+  }
+  else if (flexion >=60 && flexion <=120){
+  	digitalWrite(led_2,HIGH);
+  	digitalWrite(led_1,LOW);
+  	digitalWrite(led_3,LOW);
+  }
+  else if (flexion > 120){
+  	digitalWrite(led_3,HIGH);
+  	digitalWrite(led_2,LOW);
+  	digitalWrite(led_1,LOW);
+  }
+  else{
+  	digitalWrite(led_3,LOW);
+  	digitalWrite(led_2,LOW);
+  	digitalWrite(led_1,LOW);
+  }
+  
+}
+
+
+/*Esta funcion recibe un digito de tipo entero. Lo primero que 
+va a hacer es apagar todos los segmentos y, segun el digito que 
+sea va a entra en el case y prender los segmentos necesarios 
+para que se muestre ese numero en los displays*/
+void printDigito(int digito)
+{
+  digitalWrite(A, LOW);
+  digitalWrite(B, LOW);
+  digitalWrite(C, LOW);
+  digitalWrite(D, LOW);
+  digitalWrite(E, LOW);
+  digitalWrite(F, LOW);
+  digitalWrite(G, LOW);
+  
+  switch (digito)
+  {
+  	case 1:
+    {
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      break;
+    }
+  	case 2:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(G, HIGH);
+      digitalWrite(E, HIGH);
+      digitalWrite(D, HIGH);
+      break;
+    }
+  	case 3:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(G, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      break;
+    }
+  	case 4:
+    {
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(G, HIGH);
+      digitalWrite(F, HIGH);
+      break;
+    }
+  	case 5:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(F, HIGH);
+      digitalWrite(G, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      break;
+    }
+  	case 6:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(F, HIGH);
+      digitalWrite(G, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      digitalWrite(E, HIGH);
+      break;
+    }
+  	case 7:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      break;
+    }
+  	case 8:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      digitalWrite(E, HIGH);
+      digitalWrite(F, HIGH);
+      digitalWrite(G, HIGH);
+      break;
+    }
+  	case 9:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      digitalWrite(F, HIGH);
+      digitalWrite(G, HIGH);
+      break;
+    }
+  	case 0:
+    {
+      digitalWrite(A, HIGH);
+      digitalWrite(B, HIGH);
+      digitalWrite(C, HIGH);
+      digitalWrite(D, HIGH);
+      digitalWrite(E, HIGH);
+      digitalWrite(F, HIGH);
+      break;
+    }
+  }
+
+}
+
+
+
+/*Esta funcion recibe un digito de tipo entero. Si el parametro 
+digito es una unidad, pones a unidad en LOW(0) para que se 
+prenda, a decena en HIGH(1) para que no se encienday un delay 
+de 10 milisegundos. Si el parametro digito es una decena es al 
+revez y en caso de que no sea niguno(APAGADO) que no se 
+prendan.
+*/
+void prendeDigito(int digito)
+{
+  if (digito == UNIDAD)
+  {
+    digitalWrite(UNIDAD, LOW);//prendido
+    digitalWrite(DECENA, HIGH);//apagado
+    delay(TIEMPO_APAGADO);
+  }
+  else if (digito == DECENA)
+  {
+    digitalWrite(UNIDAD, HIGH);//apagado
+    digitalWrite(DECENA, LOW);//prendido
+    delay(TIEMPO_APAGADO);
+  }
+  else
+  {
+    digitalWrite(UNIDAD, HIGH);//apagado
+    digitalWrite(DECENA, HIGH);//apagado
+  }
+}
+
+
+
+/*Esta funcion recibe un digito de tipo entero. En esta funcion 
+le estoy diciendo primero que apage a los displays, despues que 
+use la funcion printDigito() y una cuenta para que decifre la 
+decena y la muestre, prendemos el display de la decena y lo 
+apagamos. Hacemos uso ora vez de la funcion printDigito()y otra 
+cuenta para decifrar la unidad y la mostramos.
+Esta es la funcion que prende y apaga los displays.*/
+void printCount(int count)
+{
+  prendeDigito(APAGADO);//no se prenden
+  printDigito(count/10);/*para sacar la decena divide el numero 
+  indicado por 10 y como es un int no te va a traer la coma por 
+  lo que solo te quedas con la parte que queres mostrar en ese 
+  display*/
+  prendeDigito(DECENA);//se prende decena
+  prendeDigito(APAGADO);//no se prenden
+  printDigito(count-10*((int)count/10));/*multiplica la parte 
+  entera del numero por 10 y despues se lo resta al numero 
+  original (48-10*(4))*/
+  prendeDigito(UNIDAD);//se prende unidad
+}
+
+
+
+/*Lo primero que hago es ver en que estado estan mis pulsadores.
+Verifico que los pulsadores no esten presionados(1) y si lo 
+cumplen su valor anterior se pone tambien en 1 y, la funcion 
+retorna 0. Si esta alguno presionado(0) lo que hago es 
+verificar que no este presionado desde antes y en caso de que 
+no, retorno ese pulsador. En caso de que si venga pulsado desde 
+antes, omite el if y retorna 0.
+(Al el boton ser un PULLUP significa que esta presionado cuando 
+el valor esta en 0.)*/
+int keyPressed(void)
+{
+  mayor = digitalRead(pulsadorMayor);
+  menor = digitalRead(pulsadorMenor);
+  if (mayor==1)/*entro a este if cuando no estoy presionando 
+  ese boton, osea cuando el valor de mayor sea 1. (el 1 
+  significa no presionado)*/
+  {
+    mayorAnterior = 1;/*si mayor no estando presionado es igual 
+    a 1, por lo tanto, digo que el estado anterior de esa 
+    tecla(mayorAnterior) tambien es 1, osea no se presiono*/
+  }
+  if (menor==1)
+  {
+    menorAnterior = 1;
+  }
+  /*Si mayor vale 0 quiere decir que se presiono, y si es 
+  desigual al valor que tenia anteriormente se confirma que es 
+  la primera vez que se presiono. Entonces al valor anterior le 
+  pone este nuevo valor para que cuando suelte el boton no lo 
+  tome como que lo presiono devuelta*/
+  
+  
+  if (mayor == 0 && mayor != mayorAnterior)
+  {
+    mayorAnterior = mayor;
+    return pulsadorMayor;
+  }
+  if (menor == 0 && menor != menorAnterior)
+  {
+    menorAnterior = menor;
+    return pulsadorMenor;
+  }
+  /*
+  1 1 no se presiono nada
+  0 1 se presiono, se detecta, cambia el anterior al actual y 
+  devulve el boton presionado
+  0 0 no suma otra vez ya que no es desigual al anterior
+  1 0 deja de presionar el boton por lo tanto vuelve a ser 1 y 
+  va a entrar al if y poner el valor anterior a 1 tambien
+  1 1 y volvemos al principio
+  */
+  
+  return 0;
+  /*Si se presiono algun boton lo devulve y sino, si no se 
+  presiono nada o se sigue presionando algo que ya estaba 
+  presionado devuelve 0*/
+}
+
+//ARDUINO NUMERO 2////////////////////////////////////////////////////////////////////////////////////
+// C++ code
+// Bautista Santos Tapia
+/*https://github.com/BautistaSantosTapia/Parcial-domiciliario
+-Sistemas-de-Procesamiento-de-Datos*/
+
+//definimos las variables que va a usar el fotodiodo
+#define foto A0
+int lectura;
+int luz;
+
+//definimos los puerto de las luces
+#define led 13
+#define ledR 12
+#define ledG 10
+#define ledB 11
+#define lampara 9
+
+/*Aca inicializamos y/o definimos algunas de las cosas que vamos
+a usar*/
+void setup()
+{
+  pinMode(led, OUTPUT);
+  pinMode(ledR, OUTPUT);
+  pinMode(ledG, OUTPUT);
+  pinMode(ledB, OUTPUT);
+  pinMode(lampara, OUTPUT);
+  
+  pinMode(foto, INPUT);
+}
+
+/*En esta funcion en bucle lo que hacemos es iniciar las luces 
+apagadas, obtenemos los datos de el fotodiodo y los pasamos a 
+un rango de 0 a 100 y segun cuanta luz faltante haya se van a 
+ir prendiendo las luces. 
+(Si hay menos de 45, se prende el led que es el que menos luz 
+da. Despues, si hay menos de 25 se prende el led rgb el cual 
+ayuda a dar un poco mas de luz y por ultimo si hay menos de 10 
+de luz se prende la lampara que es la que mas luz da)*/
+void loop()
+{
+  digitalWrite(lampara,LOW);
+  digitalWrite(led,LOW);
+  digitalWrite(ledR,LOW);
+  digitalWrite(ledG,LOW);
+  digitalWrite(ledB,LOW);
+  
+  lectura = analogRead(foto);
+  luz = map(lectura,49,1023,0,100);
+  
+  if (luz < 45){
+  	digitalWrite(led,HIGH);
+  }
+  if (luz < 25){
+    digitalWrite(ledR,LOW);
+    digitalWrite(ledG,HIGH);
+    digitalWrite(ledB,HIGH);
+  }
+  if (luz <= 10){
+    digitalWrite(lampara,HIGH);
+  }
+  delay(100);
+}
